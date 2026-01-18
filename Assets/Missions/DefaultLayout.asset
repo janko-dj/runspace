@@ -15,6 +15,10 @@ MonoBehaviour:
   layoutId: layout_default
   shapeType: 0
   mapRadius: 60
+  mapMargin: 2
   safeZoneRadius: 12
   midZoneRadius: 30
   farZoneRadius: 50
+  ellipseZScale: 0.75
+  playerSpawnRadius: 2
+  portalSpawnPoints: []

@@ -73,9 +73,17 @@ namespace GameCore
 
             float timeSurvived = Time.timeSinceLevelLoad;
             int kills = PressureSystem.Instance != null ? PressureSystem.Instance.EnemyKillCount : 0;
+            int powerCores = SharedInventorySystem.Instance != null ? SharedInventorySystem.Instance.CountItem(InventoryItemType.PowerCore) : 0;
+            int fuelGels = SharedInventorySystem.Instance != null ? SharedInventorySystem.Instance.CountItem(InventoryItemType.FuelGel) : 0;
+            float damageTaken = 0f;
+            CharacterHealth health = Object.FindFirstObjectByType<CharacterHealth>();
+            if (health != null)
+            {
+                damageTaken = health.TotalDamageTaken;
+            }
 
             headlineText.text = headline;
-            detailsText.text = $"Time Survived: {timeSurvived:F1}s\nEnemies Killed: {kills}";
+            detailsText.text = $"Time Survived: {timeSurvived:F1}s\nEnemies Killed: {kills}\nParts Collected: {powerCores + fuelGels} (PowerCore: {powerCores}, FuelGel: {fuelGels})\nDamage Taken: {damageTaken:F1}";
 
             if (success && mission != null && mission.questItemReward != null)
             {

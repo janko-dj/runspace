@@ -38,7 +38,8 @@ namespace GameCore
             occupiedPositions.Add(portalPosition);
 
             PositionPortal(portalPosition);
-            PositionPlayerNearPortal(portalPosition);
+            Vector3 playerPosition = PositionPlayerNearPortal(portalPosition, rng);
+            occupiedPositions.Add(playerPosition);
 
             PlaceRepairParts(mission, portalPosition, rng);
             PlaceQuestItem(mission, portalPosition, rng);
@@ -64,17 +65,25 @@ namespace GameCore
             }
         }
 
-        private void PositionPlayerNearPortal(Vector3 center)
+        private Vector3 PositionPlayerNearPortal(Vector3 center, System.Random rng)
         {
             GameObject player = GameObject.FindGameObjectWithTag("Player");
             if (player == null || layout == null)
             {
-                return;
+                return center;
             }
 
             Vector3 position = center;
+            if (layout.playerSpawnRadius > 0.1f)
+            {
+                float maxRadius = Mathf.Max(0.1f, layout.safeZoneRadius - layout.mapMargin);
+                float radius = Mathf.Min(layout.playerSpawnRadius, maxRadius);
+                Vector2 offset = RandomInsideCircle(rng, radius);
+                position += new Vector3(offset.x, 0f, offset.y);
+            }
             position.y = player.transform.position.y;
             player.transform.position = position;
+            return position;
         }
 
         private void PlaceRepairParts(MissionConfig mission, Vector3 center, System.Random rng)
@@ -126,7 +135,7 @@ namespace GameCore
 
             for (int i = 0; i < mission.bonusPickupCount; i++)
             {
-                SpawnZoneUtility.ZoneType zone = (SpawnZoneUtility.ZoneType)rng.Next(0, 3);
+                SpawnZoneUtility.ZoneType zone = PickWeightedZone(mission, rng);
                 if (TrySpawnObject(zone, center, rng, out Vector3 position))
                 {
                     GameObject bonusObject = CreatePrimitive("BonusPickup", PrimitiveType.Capsule, position);
@@ -166,6 +175,9 @@ namespace GameCore
             obj.transform.position = new Vector3(position.x, spawnHeight, position.z);
             obj.transform.localScale = Vector3.one * 1.2f;
             obj.transform.SetParent(transform, true);
+            obj.AddComponent<SimpleHoverEffect>();
+            obj.AddComponent<SimplePulseEffect>();
+            obj.AddComponent<SimpleRotateEffect>();
             return obj;
         }
 
@@ -302,15 +314,45 @@ namespace GameCore
         private void DrawZoneGizmo(Vector3 center, float radius, Color color)
         {
             Gizmos.color = color;
-            float zScale = layout.shapeType == MissionShapeType.Ellipse ? 0.75f : 1f;
+            float zScale = layout.shapeType == MissionShapeType.Ellipse ? layout.ellipseZScale : 1f;
             DrawEllipse(center, radius, radius * zScale);
         }
 
         private void DrawMapBoundaryGizmo(Vector3 center, float radius, Color color)
         {
             Gizmos.color = color;
-            float zScale = layout.shapeType == MissionShapeType.Ellipse ? 0.75f : 1f;
+            float zScale = layout.shapeType == MissionShapeType.Ellipse ? layout.ellipseZScale : 1f;
             DrawEllipse(center, radius, radius * zScale);
+        }
+
+        private SpawnZoneUtility.ZoneType PickWeightedZone(MissionConfig mission, System.Random rng)
+        {
+            float safe = Mathf.Max(0f, mission.bonusWeightSafe);
+            float mid = Mathf.Max(0f, mission.bonusWeightMid);
+            float far = Mathf.Max(0f, mission.bonusWeightFar);
+            float total = safe + mid + far;
+            if (total <= 0f)
+            {
+                return SpawnZoneUtility.ZoneType.Mid;
+            }
+
+            float roll = (float)(rng.NextDouble() * total);
+            if (roll < safe)
+            {
+                return SpawnZoneUtility.ZoneType.Safe;
+            }
+            if (roll < safe + mid)
+            {
+                return SpawnZoneUtility.ZoneType.Mid;
+            }
+            return SpawnZoneUtility.ZoneType.Far;
+        }
+
+        private Vector2 RandomInsideCircle(System.Random rng, float radius)
+        {
+            double angle = rng.NextDouble() * Mathf.PI * 2f;
+            double distance = Mathf.Sqrt((float)rng.NextDouble()) * radius;
+            return new Vector2((float)(Mathf.Cos((float)angle) * distance), (float)(Mathf.Sin((float)angle) * distance));
         }
 
         private void DrawEllipse(Vector3 center, float radiusX, float radiusZ)

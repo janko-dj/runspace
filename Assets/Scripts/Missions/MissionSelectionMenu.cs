@@ -9,6 +9,8 @@ namespace GameCore
         [SerializeField] private MissionConfig mission1;
         [Header("Mission 2 (Hardcoded)")]
         [SerializeField] private MissionConfig mission2;
+        [Header("Mission 3 (Hardcoded)")]
+        [SerializeField] private MissionConfig mission3;
 
         private bool isLoading = false;
 
@@ -35,6 +37,7 @@ namespace GameCore
 
             LogMissionLockState(mission1);
             LogMissionLockState(mission2);
+            LogMissionLockState(mission3);
         }
 
         private void Update()
@@ -105,7 +108,7 @@ namespace GameCore
         private void OnGUI()
         {
             int boxWidth = 420;
-            int boxHeight = 170;
+            int boxHeight = 205;
             int xPos = Screen.width / 2 - boxWidth / 2;
             int yPos = Screen.height / 2 - boxHeight / 2;
 
@@ -116,6 +119,9 @@ namespace GameCore
             yOffset += 35;
 
             DrawMissionRow(mission2, xPos + 10, yOffset, boxWidth - 20);
+            yOffset += 35;
+
+            DrawMissionRow(mission3, xPos + 10, yOffset, boxWidth - 20);
             yOffset += 35;
 
             if (isLoading)

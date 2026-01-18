@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.UI;
+using GameCore;
 
 namespace GameCore.Editor
 {
@@ -23,11 +24,15 @@ namespace GameCore.Editor
         private bool createMenuCamera = false;
         private bool createMissionSession = false;
         private bool createPlayerProgress = false;
+        private bool createPlayerSettings = true;
+        private bool createMenuProfilePanel = true;
         private bool createDashSystem = true;
         private bool createMissionFlow = true;
         private bool createPickups = true;
         private bool createMinimap = true;
         private bool createEndScreen = true;
+        private bool createAbilityBar = true;
+        private bool createCombatSystem = true;
 
         [MenuItem("Game/Scene Setup Tool")]
         public static void ShowWindow()
@@ -53,11 +58,15 @@ namespace GameCore.Editor
             createMenuCamera = EditorGUILayout.Toggle("Menu Camera (Pre-Game)", createMenuCamera);
             createMissionSession = EditorGUILayout.Toggle("Mission Session (Menu)", createMissionSession);
             createPlayerProgress = EditorGUILayout.Toggle("Player Progress (Menu)", createPlayerProgress);
+            createPlayerSettings = EditorGUILayout.Toggle("Player Settings Service", createPlayerSettings);
+            createMenuProfilePanel = EditorGUILayout.Toggle("Menu Profile Panel (Menu)", createMenuProfilePanel);
             createDashSystem = EditorGUILayout.Toggle("Dash System (Player)", createDashSystem);
             createMissionFlow = EditorGUILayout.Toggle("Mission Flow Controller", createMissionFlow);
             createPickups = EditorGUILayout.Toggle("Repair Part Pickups", createPickups);
             createMinimap = EditorGUILayout.Toggle("Minimap", createMinimap);
             createEndScreen = EditorGUILayout.Toggle("End Screen (Mission Scene)", createEndScreen);
+            createAbilityBar = EditorGUILayout.Toggle("Ability Bar UI", createAbilityBar);
+            createCombatSystem = EditorGUILayout.Toggle("Combat Presentation (Player)", createCombatSystem);
 
             GUILayout.Space(20);
 
@@ -135,7 +144,7 @@ namespace GameCore.Editor
                 PositionCamera();
 
             if (createMissionSelectionMenu || ShouldAutoCreateMissionMenu())
-                CreateMissionSelectionMenu(GetOrCreateMission1Config("Main"), GetOrCreateMission2Config("Main"));
+                CreateMissionSelectionMenu(GetOrCreateMission1Config("Main"), GetOrCreateMission2Config("Main"), GetOrCreateMission3Config("Main"));
 
             if (createMissionBootstrapper)
                 CreateMissionBootstrapper("PreGame");
@@ -148,6 +157,12 @@ namespace GameCore.Editor
 
             if (createPlayerProgress || ShouldAutoCreateMissionMenu())
                 CreatePlayerProgress();
+
+            if (createPlayerSettings || ShouldAutoCreateMissionMenu())
+                CreatePlayerSettingsService();
+
+            if (createMenuProfilePanel || ShouldAutoCreateMissionMenu())
+                CreateMenuProfilePanel();
 
             if (createMissionFlow)
                 CreateMissionFlowController();
@@ -163,6 +178,9 @@ namespace GameCore.Editor
 
             if (createEndScreen)
                 CreateEndScreen();
+
+            if (createAbilityBar)
+                CreateAbilityBarUI();
 
             DisableDebugTestingObjects();
 
@@ -183,12 +201,16 @@ namespace GameCore.Editor
             if (createMenuCamera) summary += "✓ Menu Camera\n";
             if (createMissionSession) summary += "✓ Mission Session\n";
             if (createPlayerProgress) summary += "✓ Player Progress\n";
+            if (createPlayerSettings) summary += "✓ Player Settings Service\n";
+            if (createMenuProfilePanel) summary += "✓ Menu Profile Panel\n";
             if (createDashSystem) summary += "✓ Dash System\n";
             if (createMissionFlow) summary += "✓ Mission Flow Controller\n";
             if (createPickups) summary += "✓ Repair Part Pickups (Spawner)\n";
             if (createMinimap) summary += "✓ Minimap (camera + UI + icons)\n";
             if (createEndScreen) summary += "✓ End Screen\n";
             if (createMissionBootstrapper) summary += "✓ Mission Layout Controller\n";
+            if (createAbilityBar) summary += "✓ Ability Bar UI\n";
+            if (createCombatSystem) summary += "✓ Combat Presentation (Controller + VFX)\n";
 
             Debug.Log(summary);
 
@@ -225,11 +247,15 @@ namespace GameCore.Editor
             createMenuCamera = true;
             createMissionSession = true;
             createPlayerProgress = true;
+            createPlayerSettings = true;
+            createMenuProfilePanel = true;
             createDashSystem = false;
             createMissionFlow = false;
             createPickups = false;
             createMinimap = false;
             createEndScreen = false;
+            createAbilityBar = false;
+            createCombatSystem = false;
 
             SetupScene();
         }
@@ -248,11 +274,15 @@ namespace GameCore.Editor
             createMenuCamera = false;
             createMissionSession = false;
             createPlayerProgress = false;
+            createPlayerSettings = true;
+            createMenuProfilePanel = false;
             createDashSystem = true;
             createMissionFlow = true;
             createPickups = true;
             createMinimap = true;
             createEndScreen = true;
+            createAbilityBar = true;
+            createCombatSystem = true;
 
             RemoveMissionMenuObjects();
             RemoveLegacyMissionLoader();
@@ -287,7 +317,20 @@ namespace GameCore.Editor
             CreateManager("PressureSystem", managersParent, typeof(PressureSystem));
 
             // RunXPSystem
-            CreateManager("RunXPSystem", managersParent, typeof(RunXPSystem));
+            GameObject xpManager = CreateManager("RunXPSystem", managersParent, typeof(RunXPSystem));
+            if (xpManager != null)
+            {
+                RunXPSystem xpSystem = xpManager.GetComponent<RunXPSystem>();
+                if (xpSystem != null)
+                {
+                    SerializedObject so = new SerializedObject(xpSystem);
+                    so.FindProperty("maxLevel").intValue = 0;
+                    so.FindProperty("useGrowthFormulaBeyondThresholds").boolValue = true;
+                    so.FindProperty("xpGrowthFactor").floatValue = 1.12f;
+                    so.FindProperty("xpFallbackBase").intValue = 150;
+                    so.ApplyModifiedProperties();
+                }
+            }
 
             // TeamLevelUpSystem
             CreateManager("TeamLevelUpSystem", managersParent, typeof(TeamLevelUpSystem));
@@ -322,8 +365,9 @@ namespace GameCore.Editor
 
             // Note: Material left as default white - manually set color in Inspector if needed
 
-            // Create Enemy Prefab if it doesn't exist
+            // Create Enemy Prefabs if they don't exist
             GameObject enemyPrefab = CreateEnemyPrefab();
+            GameObject brutePrefab = CreateBruteEnemyPrefab();
 
             // Enemy Spawner
             GameObject spawner = new GameObject("EncounterSpawner");
@@ -332,10 +376,26 @@ namespace GameCore.Editor
             EncounterSpawner enemySpawner = spawner.AddComponent<EncounterSpawner>();
 
             // Assign enemy prefab to spawner
-            if (enemyPrefab != null)
+            if (enemyPrefab != null || brutePrefab != null)
             {
                 SerializedObject so = new SerializedObject(enemySpawner);
                 so.FindProperty("enemyPrefab").objectReferenceValue = enemyPrefab;
+                SerializedProperty prefabArray = so.FindProperty("enemyPrefabs");
+                prefabArray.ClearArray();
+                int prefabCount = 0;
+                if (enemyPrefab != null) prefabCount++;
+                if (brutePrefab != null) prefabCount++;
+                prefabArray.arraySize = prefabCount;
+                int index = 0;
+                if (enemyPrefab != null)
+                {
+                    prefabArray.GetArrayElementAtIndex(index).objectReferenceValue = enemyPrefab;
+                    index++;
+                }
+                if (brutePrefab != null)
+                {
+                    prefabArray.GetArrayElementAtIndex(index).objectReferenceValue = brutePrefab;
+                }
 
                 // Find player to use as target
                 GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -407,6 +467,8 @@ namespace GameCore.Editor
             hull.transform.position = new Vector3(0, 0.5f, 0);
             hull.transform.localScale = new Vector3(6, 2, 6);
             hull.transform.parent = shipParent.transform;
+            hull.AddComponent<SimplePulseEffect>();
+            hull.AddComponent<SimpleRotateEffect>();
 
             // Remove collider so player can walk into portal zone
             Collider hullCollider = hull.GetComponent<Collider>();
@@ -417,6 +479,8 @@ namespace GameCore.Editor
             }
 
             // Note: Material left as default white - manually set color in Inspector if needed
+
+            CreatePortalParticles(shipParent.transform);
 
             // Portal Zone (trigger for victory)
             GameObject zone = new GameObject("PortalZone");
@@ -464,6 +528,34 @@ namespace GameCore.Editor
                 so.FindProperty("flowController").objectReferenceValue = flowController;
                 so.ApplyModifiedProperties();
             }
+        }
+
+        private void CreatePortalParticles(Transform parent)
+        {
+            Transform existing = parent.Find("PortalParticles");
+            if (existing != null)
+            {
+                return;
+            }
+
+            GameObject particlesObject = new GameObject("PortalParticles");
+            particlesObject.transform.parent = parent;
+            particlesObject.transform.localPosition = new Vector3(0f, 1f, 0f);
+
+            ParticleSystem ps = particlesObject.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.startLifetime = 1.2f;
+            main.startSpeed = 0.4f;
+            main.startSize = 0.15f;
+            main.maxParticles = 200;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 25f;
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 1.2f;
         }
 
         private void CreateRepairStations()
@@ -521,7 +613,7 @@ namespace GameCore.Editor
             Debug.Log($"[Setup] Created {name} at {position}");
         }
 
-        private void CreateMissionSelectionMenu(MissionConfig missionConfig, MissionConfig missionConfig2)
+        private void CreateMissionSelectionMenu(MissionConfig missionConfig, MissionConfig missionConfig2, MissionConfig missionConfig3)
         {
             GameObject menuObject = GameObject.Find("MissionSelectionMenu");
             if (menuObject == null)
@@ -540,6 +632,7 @@ namespace GameCore.Editor
                 SerializedObject so = new SerializedObject(menu);
                 so.FindProperty("mission1").objectReferenceValue = missionConfig;
                 so.FindProperty("mission2").objectReferenceValue = missionConfig2;
+                so.FindProperty("mission3").objectReferenceValue = missionConfig3;
                 so.ApplyModifiedProperties();
             }
 
@@ -598,7 +691,7 @@ namespace GameCore.Editor
             MissionConfig config = AssetDatabase.LoadAssetAtPath<MissionConfig>(assetPath);
             if (config != null)
             {
-                ApplyMissionDefaults(config, "mission_1", "Mission 1", 0, 1f, defaultSceneName, 2, 2, 2, 2, 25f, 60f, GetOrCreateQuestItem(), null, GetOrCreateMission1Layout());
+                ApplyMissionDefaults(config, "mission_1", "Mission 1", 0, 1f, defaultSceneName, 2, 2, 2, 2, 25f, 60f, GetOrCreateQuestItem(), null, GetOrCreateMission1Layout(), 1f, 2f, 1f);
                 return config;
             }
 
@@ -621,6 +714,9 @@ namespace GameCore.Editor
             config.layout = GetOrCreateMission1Layout();
             config.questItemSpawnCount = 1;
             config.bonusPickupCount = 2;
+            config.bonusWeightSafe = 1f;
+            config.bonusWeightMid = 2f;
+            config.bonusWeightFar = 1f;
             config.useSpawnSeed = false;
 
             AssetDatabase.CreateAsset(config, assetPath);
@@ -643,7 +739,7 @@ namespace GameCore.Editor
             MissionConfig config = AssetDatabase.LoadAssetAtPath<MissionConfig>(assetPath);
             if (config != null)
             {
-                ApplyMissionDefaults(config, "mission_2", "Mission 2", 8, 1.2f, defaultSceneName, 3, 3, 3, 3, 30f, 70f, null, GetOrCreateQuestItem(), GetOrCreateMission2Layout());
+                ApplyMissionDefaults(config, "mission_2", "Mission 2", 8, 1.2f, defaultSceneName, 3, 3, 3, 3, 30f, 70f, GetOrCreateQuestItem2(), GetOrCreateQuestItem(), GetOrCreateMission2Layout(), 0.5f, 1.5f, 2f);
                 return config;
             }
 
@@ -657,7 +753,7 @@ namespace GameCore.Editor
             config.sceneName = string.IsNullOrWhiteSpace(defaultSceneName)
                 ? "Main"
                 : defaultSceneName;
-            config.questItemReward = null;
+            config.questItemReward = GetOrCreateQuestItem2();
             config.requiredQuestItem = questItem;
             config.requiredPowerCores = 3;
             config.requiredFuelGels = 3;
@@ -668,6 +764,59 @@ namespace GameCore.Editor
             config.layout = GetOrCreateMission2Layout();
             config.questItemSpawnCount = 1;
             config.bonusPickupCount = 3;
+            config.bonusWeightSafe = 0.5f;
+            config.bonusWeightMid = 1.5f;
+            config.bonusWeightFar = 2f;
+            config.useSpawnSeed = false;
+
+            AssetDatabase.CreateAsset(config, assetPath);
+            AssetDatabase.SaveAssets();
+
+            Debug.Log($"[Setup] Created MissionConfig at {assetPath}");
+            return config;
+        }
+
+        private MissionConfig GetOrCreateMission3Config(string defaultSceneName)
+        {
+            const string missionsFolder = "Assets/Missions";
+            const string assetPath = "Assets/Missions/Mission3.asset";
+
+            if (!AssetDatabase.IsValidFolder(missionsFolder))
+            {
+                AssetDatabase.CreateFolder("Assets", "Missions");
+            }
+
+            MissionConfig config = AssetDatabase.LoadAssetAtPath<MissionConfig>(assetPath);
+            if (config != null)
+            {
+                ApplyMissionDefaults(config, "mission_3", "Mission 3", 12, 1.35f, defaultSceneName, 4, 3, 4, 3, 35f, 80f, null, GetOrCreateQuestItem2(), GetOrCreateMission3Layout(), 0.25f, 1f, 2.5f);
+                return config;
+            }
+
+            QuestItem questItem = GetOrCreateQuestItem2();
+
+            config = ScriptableObject.CreateInstance<MissionConfig>();
+            config.missionId = "mission_3";
+            config.displayName = "Mission 3";
+            config.startingThreat = 12;
+            config.threatGrowthMultiplier = 1.35f;
+            config.sceneName = string.IsNullOrWhiteSpace(defaultSceneName)
+                ? "Main"
+                : defaultSceneName;
+            config.questItemReward = null;
+            config.requiredQuestItem = questItem;
+            config.requiredPowerCores = 4;
+            config.requiredFuelGels = 3;
+            config.spawnPowerCores = 4;
+            config.spawnFuelGels = 3;
+            config.pickupMinDistance = 35f;
+            config.pickupMaxDistance = 80f;
+            config.layout = GetOrCreateMission3Layout();
+            config.questItemSpawnCount = 1;
+            config.bonusPickupCount = 4;
+            config.bonusWeightSafe = 0.25f;
+            config.bonusWeightMid = 1f;
+            config.bonusWeightFar = 2.5f;
             config.useSpawnSeed = false;
 
             AssetDatabase.CreateAsset(config, assetPath);
@@ -705,6 +854,64 @@ namespace GameCore.Editor
             return item;
         }
 
+        private QuestItem GetOrCreateQuestItem2()
+        {
+            const string folderPath = "Assets/Progression";
+            const string assetPath = "Assets/Progression/QuestItem_Mission2.asset";
+
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                AssetDatabase.CreateFolder("Assets", "Progression");
+            }
+
+            QuestItem item = AssetDatabase.LoadAssetAtPath<QuestItem>(assetPath);
+            if (item != null)
+            {
+                return item;
+            }
+
+            item = ScriptableObject.CreateInstance<QuestItem>();
+            item.questItemId = "quest_item_2";
+            item.displayName = "Stabilizer Coil";
+            item.description = "A rare coil needed to align the next portal.";
+            item.unlocksMissionId = "mission_3";
+
+            AssetDatabase.CreateAsset(item, assetPath);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Setup] Created QuestItem at {assetPath}");
+            return item;
+        }
+
+        private PlayerSettingsData GetOrCreatePlayerSettingsData()
+        {
+            const string folderPath = "Assets/Settings";
+            const string assetPath = "Assets/Settings/PlayerSettingsData.asset";
+
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                AssetDatabase.CreateFolder("Assets", "Settings");
+            }
+
+            PlayerSettingsData data = AssetDatabase.LoadAssetAtPath<PlayerSettingsData>(assetPath);
+            if (data != null)
+            {
+                return data;
+            }
+
+            data = ScriptableObject.CreateInstance<PlayerSettingsData>();
+            data.defaultNickname = "Pilot";
+            data.defaultMouseSensitivity = 1f;
+            data.defaultInvertYaw = false;
+            data.defaultInvertPitch = false;
+            data.defaultAimAssist = false;
+            data.defaultCameraOrbitEnabled = true;
+
+            AssetDatabase.CreateAsset(data, assetPath);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Setup] Created PlayerSettingsData at {assetPath}");
+            return data;
+        }
+
         private MissionLayout GetOrCreateMission1Layout()
         {
             const string folderPath = "Assets/Missions";
@@ -718,6 +925,7 @@ namespace GameCore.Editor
             MissionLayout layout = AssetDatabase.LoadAssetAtPath<MissionLayout>(assetPath);
             if (layout != null)
             {
+                EnsureLayoutDefaults(layout, 60f, 2f, 12f, 30f, 50f, 0.75f, 2f, MissionShapeType.Circle);
                 EnsureLayoutSpawnPoints(layout, new System.Collections.Generic.List<Vector3>
                 {
                     new Vector3(0f, 0f, 0f),
@@ -732,9 +940,12 @@ namespace GameCore.Editor
             layout.layoutId = "layout_mission_1";
             layout.shapeType = MissionShapeType.Circle;
             layout.mapRadius = 60f;
+            layout.mapMargin = 2f;
             layout.safeZoneRadius = 12f;
             layout.midZoneRadius = 30f;
             layout.farZoneRadius = 50f;
+            layout.ellipseZScale = 0.75f;
+            layout.playerSpawnRadius = 2f;
             layout.portalSpawnPoints = new System.Collections.Generic.List<Vector3>
             {
                 new Vector3(0f, 0f, 0f),
@@ -762,6 +973,7 @@ namespace GameCore.Editor
             MissionLayout layout = AssetDatabase.LoadAssetAtPath<MissionLayout>(assetPath);
             if (layout != null)
             {
+                EnsureLayoutDefaults(layout, 65f, 2.5f, 14f, 34f, 55f, 0.7f, 2.2f, MissionShapeType.Ellipse);
                 EnsureLayoutSpawnPoints(layout, new System.Collections.Generic.List<Vector3>
                 {
                     new Vector3(0f, 0f, 0f),
@@ -776,15 +988,66 @@ namespace GameCore.Editor
             layout.layoutId = "layout_mission_2";
             layout.shapeType = MissionShapeType.Ellipse;
             layout.mapRadius = 65f;
+            layout.mapMargin = 2.5f;
             layout.safeZoneRadius = 14f;
             layout.midZoneRadius = 34f;
             layout.farZoneRadius = 55f;
+            layout.ellipseZScale = 0.7f;
+            layout.playerSpawnRadius = 2.2f;
             layout.portalSpawnPoints = new System.Collections.Generic.List<Vector3>
             {
                 new Vector3(0f, 0f, 0f),
                 new Vector3(14f, 0f, 6f),
                 new Vector3(-14f, 0f, -6f),
                 new Vector3(0f, 0f, -14f)
+            };
+
+            AssetDatabase.CreateAsset(layout, assetPath);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Setup] Created MissionLayout at {assetPath}");
+            return layout;
+        }
+
+        private MissionLayout GetOrCreateMission3Layout()
+        {
+            const string folderPath = "Assets/Missions";
+            const string assetPath = "Assets/Missions/Layout_Mission3.asset";
+
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                AssetDatabase.CreateFolder("Assets", "Missions");
+            }
+
+            MissionLayout layout = AssetDatabase.LoadAssetAtPath<MissionLayout>(assetPath);
+            if (layout != null)
+            {
+                EnsureLayoutDefaults(layout, 70f, 3f, 14f, 36f, 60f, 0.8f, 2.5f, MissionShapeType.Circle);
+                EnsureLayoutSpawnPoints(layout, new System.Collections.Generic.List<Vector3>
+                {
+                    new Vector3(0f, 0f, 0f),
+                    new Vector3(16f, 0f, 10f),
+                    new Vector3(-16f, 0f, -10f),
+                    new Vector3(0f, 0f, 18f)
+                });
+                return layout;
+            }
+
+            layout = ScriptableObject.CreateInstance<MissionLayout>();
+            layout.layoutId = "layout_mission_3";
+            layout.shapeType = MissionShapeType.Circle;
+            layout.mapRadius = 70f;
+            layout.mapMargin = 3f;
+            layout.safeZoneRadius = 14f;
+            layout.midZoneRadius = 36f;
+            layout.farZoneRadius = 60f;
+            layout.ellipseZScale = 0.8f;
+            layout.playerSpawnRadius = 2.5f;
+            layout.portalSpawnPoints = new System.Collections.Generic.List<Vector3>
+            {
+                new Vector3(0f, 0f, 0f),
+                new Vector3(16f, 0f, 10f),
+                new Vector3(-16f, 0f, -10f),
+                new Vector3(0f, 0f, 18f)
             };
 
             AssetDatabase.CreateAsset(layout, assetPath);
@@ -808,6 +1071,74 @@ namespace GameCore.Editor
             }
         }
 
+        private void EnsureLayoutDefaults(
+            MissionLayout layout,
+            float mapRadius,
+            float mapMargin,
+            float safeRadius,
+            float midRadius,
+            float farRadius,
+            float ellipseZScale,
+            float playerSpawnRadius,
+            MissionShapeType shapeType)
+        {
+            bool dirty = false;
+
+            if (layout.mapRadius <= 0f)
+            {
+                layout.mapRadius = mapRadius;
+                dirty = true;
+            }
+
+            if (layout.mapMargin <= 0f)
+            {
+                layout.mapMargin = mapMargin;
+                dirty = true;
+            }
+
+            if (layout.safeZoneRadius <= 0f)
+            {
+                layout.safeZoneRadius = safeRadius;
+                dirty = true;
+            }
+
+            if (layout.midZoneRadius <= 0f)
+            {
+                layout.midZoneRadius = midRadius;
+                dirty = true;
+            }
+
+            if (layout.farZoneRadius <= 0f)
+            {
+                layout.farZoneRadius = farRadius;
+                dirty = true;
+            }
+
+            if (layout.ellipseZScale <= 0f)
+            {
+                layout.ellipseZScale = ellipseZScale;
+                dirty = true;
+            }
+
+            if (layout.playerSpawnRadius <= 0f)
+            {
+                layout.playerSpawnRadius = playerSpawnRadius;
+                dirty = true;
+            }
+
+            if (layout.shapeType != shapeType)
+            {
+                layout.shapeType = shapeType;
+                dirty = true;
+            }
+
+            if (dirty)
+            {
+                EditorUtility.SetDirty(layout);
+                AssetDatabase.SaveAssets();
+            }
+        }
+
         private void ApplyMissionDefaults(
             MissionConfig config,
             string missionId,
@@ -823,7 +1154,10 @@ namespace GameCore.Editor
             float pickupMaxDistance,
             QuestItem reward,
             QuestItem required,
-            MissionLayout layout)
+            MissionLayout layout,
+            float bonusWeightSafe,
+            float bonusWeightMid,
+            float bonusWeightFar)
         {
             bool dirty = false;
 
@@ -911,6 +1245,24 @@ namespace GameCore.Editor
                 dirty = true;
             }
 
+            if (config.bonusWeightSafe <= 0f)
+            {
+                config.bonusWeightSafe = bonusWeightSafe;
+                dirty = true;
+            }
+
+            if (config.bonusWeightMid <= 0f)
+            {
+                config.bonusWeightMid = bonusWeightMid;
+                dirty = true;
+            }
+
+            if (config.bonusWeightFar <= 0f)
+            {
+                config.bonusWeightFar = bonusWeightFar;
+                dirty = true;
+            }
+
             if (reward != null && config.questItemReward == null)
             {
                 config.questItemReward = reward;
@@ -954,6 +1306,36 @@ namespace GameCore.Editor
             Debug.Log("[Setup] PlayerProgress created");
         }
 
+        private void CreatePlayerSettingsService()
+        {
+            GameObject settingsObject = GameObject.Find("PlayerSettingsService");
+            if (settingsObject == null)
+            {
+                settingsObject = new GameObject("PlayerSettingsService");
+                settingsObject.AddComponent<PlayerSettingsService>();
+            }
+
+            PlayerSettingsService service = settingsObject.GetComponent<PlayerSettingsService>();
+            if (service != null)
+            {
+                SerializedObject so = new SerializedObject(service);
+                so.FindProperty("defaults").objectReferenceValue = GetOrCreatePlayerSettingsData();
+                so.ApplyModifiedProperties();
+            }
+
+            Debug.Log("[Setup] PlayerSettingsService created");
+        }
+
+        private void CreateMenuProfilePanel()
+        {
+            GameObject panelObject = GameObject.Find("MenuProfilePanel");
+            if (panelObject == null)
+            {
+                panelObject = new GameObject("MenuProfilePanel");
+                panelObject.AddComponent<MenuProfilePanel>();
+            }
+        }
+
         private string GetActiveSceneName()
         {
             return EditorSceneManager.GetActiveScene().name;
@@ -974,6 +1356,14 @@ namespace GameCore.Editor
             {
                 config2.sceneName = sceneName;
                 EditorUtility.SetDirty(config2);
+                AssetDatabase.SaveAssets();
+            }
+
+            MissionConfig config3 = GetOrCreateMission3Config(sceneName);
+            if (config3.sceneName != sceneName)
+            {
+                config3.sceneName = sceneName;
+                EditorUtility.SetDirty(config3);
                 AssetDatabase.SaveAssets();
             }
         }
@@ -1068,6 +1458,289 @@ namespace GameCore.Editor
             {
                 controllerObject.AddComponent<MissionLayoutController>();
             }
+        }
+
+        private void CreateAbilityBarUI()
+        {
+            GameObject canvasObject = GameObject.Find("HUDCanvas");
+            if (canvasObject == null)
+            {
+                canvasObject = new GameObject("HUDCanvas");
+            }
+
+            Canvas canvas = canvasObject.GetComponent<Canvas>();
+            if (canvas == null)
+            {
+                canvas = canvasObject.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            }
+
+            if (canvasObject.GetComponent<UnityEngine.UI.CanvasScaler>() == null)
+            {
+                var scaler = canvasObject.AddComponent<UnityEngine.UI.CanvasScaler>();
+                scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1920, 1080);
+            }
+
+            if (canvasObject.GetComponent<UnityEngine.UI.GraphicRaycaster>() == null)
+            {
+                canvasObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            }
+
+            GameObject barObject = GameObject.Find("AbilityBarUI");
+            if (barObject == null)
+            {
+                barObject = new GameObject("AbilityBarUI");
+                barObject.transform.SetParent(canvasObject.transform, false);
+            }
+
+            RectTransform barRect = barObject.GetComponent<RectTransform>();
+            if (barRect == null)
+            {
+                barRect = barObject.AddComponent<RectTransform>();
+            }
+            barRect.anchorMin = new Vector2(0.5f, 0f);
+            barRect.anchorMax = new Vector2(0.5f, 0f);
+            barRect.pivot = new Vector2(0.5f, 0f);
+            barRect.sizeDelta = new Vector2(220f, 90f);
+            barRect.anchoredPosition = new Vector2(0f, 20f);
+
+            AbilityBarUI bar = barObject.GetComponent<AbilityBarUI>();
+            if (bar == null)
+            {
+                bar = barObject.AddComponent<AbilityBarUI>();
+            }
+
+            AbilityIconWidget iconPrefab = GetOrCreateAbilityIconWidgetPrefab();
+            if (iconPrefab != null)
+            {
+                EnsureAbilityIconWidget(barObject.transform, "AbilitySlot1", new Vector2(-55f, 0f), iconPrefab, bar, true);
+                EnsureAbilityIconWidget(barObject.transform, "AbilitySlot2", new Vector2(55f, 0f), iconPrefab, bar, false);
+            }
+        }
+
+        private AbilityIconWidget GetOrCreateAbilityIconWidgetPrefab()
+        {
+            const string folderPath = "Assets/UI";
+            const string assetPath = "Assets/UI/AbilityIconWidget.prefab";
+
+            if (!AssetDatabase.IsValidFolder("Assets/UI"))
+            {
+                AssetDatabase.CreateFolder("Assets", "UI");
+            }
+
+            AbilityIconWidget existing = AssetDatabase.LoadAssetAtPath<AbilityIconWidget>(assetPath);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            GameObject root = new GameObject("AbilityIconWidget");
+            RectTransform rect = root.AddComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(64f, 64f);
+
+            Image background = root.AddComponent<Image>();
+            background.color = new Color(0.1f, 0.1f, 0.1f, 0.8f);
+
+            GameObject iconObject = new GameObject("Icon");
+            iconObject.transform.SetParent(root.transform, false);
+            Image iconImage = iconObject.AddComponent<Image>();
+            iconImage.color = Color.white;
+            RectTransform iconRect = iconObject.GetComponent<RectTransform>();
+            iconRect.anchorMin = Vector2.zero;
+            iconRect.anchorMax = Vector2.one;
+            iconRect.offsetMin = new Vector2(4f, 4f);
+            iconRect.offsetMax = new Vector2(-4f, -4f);
+
+            GameObject overlayObject = new GameObject("CooldownOverlay");
+            overlayObject.transform.SetParent(root.transform, false);
+            Image overlayImage = overlayObject.AddComponent<Image>();
+            overlayImage.color = new Color(0f, 0f, 0f, 0.65f);
+            overlayImage.type = Image.Type.Filled;
+            overlayImage.fillMethod = Image.FillMethod.Radial360;
+            overlayImage.fillOrigin = 2;
+            overlayImage.fillAmount = 0f;
+            RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = new Vector2(4f, 4f);
+            overlayRect.offsetMax = new Vector2(-4f, -4f);
+
+            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+            GameObject keyObject = new GameObject("KeyLabel");
+            keyObject.transform.SetParent(root.transform, false);
+            Text keyText = keyObject.AddComponent<Text>();
+            keyText.font = font;
+            keyText.fontSize = 14;
+            keyText.alignment = TextAnchor.LowerRight;
+            keyText.color = Color.white;
+            RectTransform keyRect = keyObject.GetComponent<RectTransform>();
+            keyRect.anchorMin = Vector2.zero;
+            keyRect.anchorMax = Vector2.one;
+            keyRect.offsetMin = new Vector2(6f, 6f);
+            keyRect.offsetMax = new Vector2(-6f, -6f);
+
+            GameObject cooldownObject = new GameObject("CooldownText");
+            cooldownObject.transform.SetParent(root.transform, false);
+            Text cooldownText = cooldownObject.AddComponent<Text>();
+            cooldownText.font = font;
+            cooldownText.fontSize = 18;
+            cooldownText.alignment = TextAnchor.MiddleCenter;
+            cooldownText.color = Color.white;
+            RectTransform cooldownRect = cooldownObject.GetComponent<RectTransform>();
+            cooldownRect.anchorMin = Vector2.zero;
+            cooldownRect.anchorMax = Vector2.one;
+            cooldownRect.offsetMin = Vector2.zero;
+            cooldownRect.offsetMax = Vector2.zero;
+
+            GameObject emptyObject = new GameObject("EmptyLabel");
+            emptyObject.transform.SetParent(root.transform, false);
+            Text emptyText = emptyObject.AddComponent<Text>();
+            emptyText.font = font;
+            emptyText.fontSize = 18;
+            emptyText.alignment = TextAnchor.MiddleCenter;
+            emptyText.color = Color.white;
+            RectTransform emptyRect = emptyObject.GetComponent<RectTransform>();
+            emptyRect.anchorMin = Vector2.zero;
+            emptyRect.anchorMax = Vector2.one;
+            emptyRect.offsetMin = Vector2.zero;
+            emptyRect.offsetMax = Vector2.zero;
+
+            GameObject nameObject = new GameObject("AbilityName");
+            nameObject.transform.SetParent(root.transform, false);
+            Text nameText = nameObject.AddComponent<Text>();
+            nameText.font = font;
+            nameText.fontSize = 12;
+            nameText.alignment = TextAnchor.UpperCenter;
+            nameText.color = Color.white;
+            RectTransform nameRect = nameObject.GetComponent<RectTransform>();
+            nameRect.anchorMin = new Vector2(0f, 1f);
+            nameRect.anchorMax = new Vector2(1f, 1f);
+            nameRect.pivot = new Vector2(0.5f, 1f);
+            nameRect.sizeDelta = new Vector2(0f, 18f);
+            nameRect.anchoredPosition = new Vector2(0f, -4f);
+
+            AbilityIconWidget widget = root.AddComponent<AbilityIconWidget>();
+            SerializedObject so = new SerializedObject(widget);
+            so.FindProperty("iconImage").objectReferenceValue = iconImage;
+            so.FindProperty("cooldownOverlay").objectReferenceValue = overlayImage;
+            so.FindProperty("keyLabel").objectReferenceValue = keyText;
+            so.FindProperty("cooldownText").objectReferenceValue = cooldownText;
+            so.FindProperty("emptyLabel").objectReferenceValue = emptyText;
+            so.FindProperty("abilityNameLabel").objectReferenceValue = nameText;
+            so.ApplyModifiedProperties();
+
+            GameObject prefabObject = PrefabUtility.SaveAsPrefabAsset(root, assetPath);
+            DestroyImmediate(root);
+            return prefabObject != null ? prefabObject.GetComponent<AbilityIconWidget>() : null;
+        }
+
+        private CombatAttackDefinition GetOrCreateAttackDefinition(
+            string assetPath,
+            string attackId,
+            string displayName,
+            CombatAttackType attackType,
+            float windup,
+            float active,
+            float recovery,
+            float damage,
+            float range,
+            float arcAngle,
+            float hitRadius,
+            bool useNormalizedFireMoment,
+            float fireMomentNormalized)
+        {
+            const string folderPath = "Assets/Combat";
+
+            if (!AssetDatabase.IsValidFolder(folderPath))
+            {
+                AssetDatabase.CreateFolder("Assets", "Combat");
+            }
+
+            CombatAttackDefinition definition = AssetDatabase.LoadAssetAtPath<CombatAttackDefinition>(assetPath);
+            if (definition == null)
+            {
+                definition = ScriptableObject.CreateInstance<CombatAttackDefinition>();
+                AssetDatabase.CreateAsset(definition, assetPath);
+            }
+
+            SerializedObject so = new SerializedObject(definition);
+            so.FindProperty("attackId").stringValue = attackId;
+            so.FindProperty("displayName").stringValue = displayName;
+            so.FindProperty("attackType").enumValueIndex = (int)attackType;
+            so.FindProperty("windupDuration").floatValue = windup;
+            so.FindProperty("activeDuration").floatValue = active;
+            so.FindProperty("recoveryDuration").floatValue = recovery;
+            so.FindProperty("damage").floatValue = damage;
+            so.FindProperty("range").floatValue = range;
+            so.FindProperty("arcAngle").floatValue = arcAngle;
+            so.FindProperty("hitRadius").floatValue = hitRadius;
+            so.FindProperty("useNormalizedFireMoment").boolValue = useNormalizedFireMoment;
+            so.FindProperty("fireMomentNormalized").floatValue = fireMomentNormalized;
+            so.FindProperty("targetMask").intValue = BuildCombatTargetMask();
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(definition);
+
+            return definition;
+        }
+
+        private int BuildCombatTargetMask()
+        {
+            int mask = 0;
+            int enemyLayer = LayerMask.NameToLayer("Enemy");
+            if (enemyLayer >= 0)
+            {
+                mask |= 1 << enemyLayer;
+            }
+
+            int defaultLayer = LayerMask.NameToLayer("Default");
+            if (defaultLayer >= 0)
+            {
+                mask |= 1 << defaultLayer;
+            }
+
+            if (mask == 0)
+            {
+                mask = ~0;
+            }
+
+            return mask;
+        }
+
+        private void EnsureAbilityIconWidget(Transform parent, string name, Vector2 position, AbilityIconWidget prefab, AbilityBarUI bar, bool isSlot1)
+        {
+            Transform existing = parent.Find(name);
+            GameObject instance = existing != null ? existing.gameObject : PrefabUtility.InstantiatePrefab(prefab.gameObject, parent) as GameObject;
+            if (instance == null)
+            {
+                return;
+            }
+
+            instance.name = name;
+            RectTransform rect = instance.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(64f, 64f);
+
+            AbilityIconWidget widget = instance.GetComponent<AbilityIconWidget>();
+            if (widget == null)
+            {
+                widget = instance.AddComponent<AbilityIconWidget>();
+            }
+
+            SerializedObject so = new SerializedObject(bar);
+            if (isSlot1)
+            {
+                so.FindProperty("slot1Widget").objectReferenceValue = widget;
+            }
+            else
+            {
+                so.FindProperty("slot2Widget").objectReferenceValue = widget;
+            }
+            so.ApplyModifiedProperties();
         }
 
         private void DisableDebugTestingObjects()
@@ -1177,9 +1850,149 @@ namespace GameCore.Editor
                 lookSo.ApplyModifiedProperties();
             }
 
+            PlayerAbilityController abilityController = player.GetComponent<PlayerAbilityController>();
+            if (abilityController != null)
+            {
+                SerializedObject abilitySo = new SerializedObject(abilityController);
+                abilitySo.FindProperty("abilitySlot1Id").stringValue = "gunner_burst";
+                abilitySo.FindProperty("abilitySlot2Id").stringValue = "gunner_overdrive";
+                abilitySo.ApplyModifiedProperties();
+            }
+
             if (createDashSystem)
             {
                 AddComponentIfMissing(player, "GameCore.PlayerDashController, Assembly-CSharp");
+            }
+
+            if (createCombatSystem)
+            {
+                EnsureCombatSetup(player);
+            }
+        }
+
+        private void EnsureCombatSetup(GameObject player)
+        {
+            AddComponentIfMissing(player, "GameCore.CombatActionController, Assembly-CSharp");
+            AddComponentIfMissing(player, "GameCore.ProceduralCombatPresentation, Assembly-CSharp");
+            AddComponentIfMissing(player, "GameCore.AnimatorCombatPresentation, Assembly-CSharp");
+
+            Transform weaponRoot = EnsureChildTransform(player.transform, "WeaponRoot", new Vector3(0.4f, 0.9f, 0.5f));
+            Transform firePoint = EnsureChildTransform(weaponRoot, "FirePoint", new Vector3(0f, 0f, 0.4f));
+            EnsureChildTransform(player.transform, "OffhandPoint", new Vector3(-0.4f, 0.9f, 0.3f));
+
+            CombatAttackDefinition ranged = GetOrCreateAttackDefinition(
+                "Assets/Combat/Attack_Ranged.asset",
+                "attack_ranged",
+                "Ranged Shot",
+                CombatAttackType.Ranged,
+                0.08f,
+                0.15f,
+                0.25f,
+                12f,
+                35f,
+                0f,
+                1.5f,
+                true,
+                0.5f
+            );
+
+            CombatAttackDefinition melee = GetOrCreateAttackDefinition(
+                "Assets/Combat/Attack_Melee.asset",
+                "attack_melee",
+                "Melee Swing",
+                CombatAttackType.Melee,
+                0.12f,
+                0.25f,
+                0.35f,
+                18f,
+                12f,
+                120f,
+                5f,
+                true,
+                0.3f
+            );
+
+            CombatActionController controller = player.GetComponent<CombatActionController>();
+            if (controller != null)
+            {
+                SerializedObject so = new SerializedObject(controller);
+                so.FindProperty("primaryAttack").objectReferenceValue = ranged;
+                so.FindProperty("secondaryAttack").objectReferenceValue = melee;
+                so.FindProperty("proceduralPresentation").objectReferenceValue = player.GetComponent<ProceduralCombatPresentation>();
+                so.FindProperty("animatorPresentation").objectReferenceValue = player.GetComponent<AnimatorCombatPresentation>();
+                so.FindProperty("weaponRoot").objectReferenceValue = weaponRoot;
+                so.FindProperty("firePoint").objectReferenceValue = firePoint;
+                so.FindProperty("disableAutoAttackWeapon").boolValue = true;
+                so.FindProperty("useWeaponStats").boolValue = false;
+                so.FindProperty("weaponSource").objectReferenceValue = player.GetComponent<AutoAttackWeapon>();
+                so.FindProperty("rangedHitRadius").floatValue = 1.5f;
+                so.FindProperty("forwardOffset").floatValue = 1.5f;
+                so.ApplyModifiedProperties();
+            }
+
+            ProceduralCombatPresentation procedural = player.GetComponent<ProceduralCombatPresentation>();
+            if (procedural != null)
+            {
+                SerializedObject so = new SerializedObject(procedural);
+                so.FindProperty("weaponRoot").objectReferenceValue = weaponRoot;
+                so.FindProperty("firePoint").objectReferenceValue = firePoint;
+                so.ApplyModifiedProperties();
+            }
+
+            EnsureWeaponPlaceholder(weaponRoot);
+        }
+
+        private Transform EnsureChildTransform(Transform parent, string name, Vector3 localPosition)
+        {
+            Transform child = parent.Find(name);
+            if (child == null)
+            {
+                GameObject childObject = new GameObject(name);
+                childObject.transform.SetParent(parent, false);
+                child = childObject.transform;
+            }
+
+            child.localPosition = localPosition;
+            child.localRotation = Quaternion.identity;
+            child.localScale = Vector3.one;
+            return child;
+        }
+
+        private void EnsureWeaponPlaceholder(Transform weaponRoot)
+        {
+            if (weaponRoot == null)
+            {
+                return;
+            }
+
+            Transform existing = weaponRoot.Find("WeaponPlaceholder");
+            if (existing != null)
+            {
+                return;
+            }
+
+            GameObject placeholder = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            placeholder.name = "WeaponPlaceholder";
+            placeholder.transform.SetParent(weaponRoot, false);
+            placeholder.transform.localPosition = new Vector3(0f, 0f, 0.4f);
+            placeholder.transform.localRotation = Quaternion.identity;
+            placeholder.transform.localScale = new Vector3(0.2f, 0.2f, 0.6f);
+
+            Collider collider = placeholder.GetComponent<Collider>();
+            if (collider != null)
+            {
+                DestroyImmediate(collider);
+            }
+
+            if (weaponRoot.GetComponent<TrailRenderer>() == null)
+            {
+                TrailRenderer trail = weaponRoot.gameObject.AddComponent<TrailRenderer>();
+                trail.time = 0.15f;
+                trail.startWidth = 0.2f;
+                trail.endWidth = 0.05f;
+                trail.material = new Material(Shader.Find("Sprites/Default"));
+                trail.material.color = new Color(1f, 0.8f, 0.2f, 0.8f);
+                trail.emitting = false;
             }
         }
 
@@ -1358,6 +2171,53 @@ namespace GameCore.Editor
             DestroyImmediate(enemy);
 
             Debug.Log($"[Setup] Created ChaserEnemy prefab at {prefabPath}");
+            return prefab;
+        }
+
+        private GameObject CreateBruteEnemyPrefab()
+        {
+            string prefabPath = "Assets/Prefabs/BruteEnemy.prefab";
+            GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+
+            if (existingPrefab != null)
+            {
+                Debug.Log("[Setup] BruteEnemy prefab already exists, using existing");
+                return existingPrefab;
+            }
+
+            if (!AssetDatabase.IsValidFolder("Assets/Prefabs"))
+            {
+                AssetDatabase.CreateFolder("Assets", "Prefabs");
+                Debug.Log("[Setup] Created Assets/Prefabs folder");
+            }
+
+            GameObject enemy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            enemy.name = "BruteEnemy";
+            enemy.transform.localScale = new Vector3(1.4f, 1.4f, 1.4f);
+            enemy.tag = "Enemy";
+
+            ChaserEnemy brute = enemy.AddComponent<ChaserEnemy>();
+
+            SerializedObject so = new SerializedObject(brute);
+            so.FindProperty("maxHealth").floatValue = 60f;
+            so.FindProperty("moveSpeed").floatValue = 3f;
+            so.FindProperty("contactDamage").floatValue = 18f;
+            so.FindProperty("damageCooldown").floatValue = 1.2f;
+            so.ApplyModifiedProperties();
+
+            DestroyImmediate(enemy.GetComponent<Collider>());
+            SphereCollider collider = enemy.AddComponent<SphereCollider>();
+            collider.radius = 0.6f;
+            collider.isTrigger = true;
+
+            Rigidbody rb = enemy.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(enemy, prefabPath);
+            DestroyImmediate(enemy);
+
+            Debug.Log($"[Setup] Created BruteEnemy prefab at {prefabPath}");
             return prefab;
         }
 

@@ -11,6 +11,8 @@ namespace GameCore
         [Header("Spawn Configuration")]
         [Tooltip("Enemy prefab to spawn (must have ChaserEnemy component)")]
         [SerializeField] private GameObject enemyPrefab;
+        [Tooltip("Optional list of enemy prefabs to spawn randomly")]
+        [SerializeField] private GameObject[] enemyPrefabs;
 
         [Tooltip("Target that spawned enemies will move toward")]
         [SerializeField] private Transform enemyTarget;
@@ -71,7 +73,10 @@ namespace GameCore
             // Validation
             if (enemyPrefab == null)
             {
-                Debug.LogError("[EncounterSpawner] No enemy prefab assigned!", this);
+                if (enemyPrefabs == null || enemyPrefabs.Length == 0)
+                {
+                    Debug.LogError("[EncounterSpawner] No enemy prefabs assigned!", this);
+                }
             }
 
             if (enemyTarget == null)
@@ -222,7 +227,8 @@ namespace GameCore
 
         private void SpawnEnemy()
         {
-            if (enemyPrefab == null)
+            GameObject prefab = PickEnemyPrefab();
+            if (prefab == null)
             {
                 Debug.LogError("[EncounterSpawner] Cannot spawn - no prefab assigned!");
                 return;
@@ -232,7 +238,7 @@ namespace GameCore
             Vector3 spawnPosition = GetRandomSpawnPosition();
 
             // Spawn enemy
-            GameObject enemyObject = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+            GameObject enemyObject = Instantiate(prefab, spawnPosition, Quaternion.identity);
             totalSpawned++;
 
             // Set target if enemy has ChaserEnemy component
@@ -257,6 +263,17 @@ namespace GameCore
                 string modeText = isRunBackMode ? "RUNBACK" : (isFinalStandMode ? "FINALSTAND" : "Normal");
                 Debug.Log($"[EncounterSpawner] Spawned enemy #{totalSpawned} ({modeText}) at {spawnPosition} | ThreatLevel: {threatLevel:F1} | Interval: {currentSpawnInterval:F2}s");
             }
+        }
+
+        private GameObject PickEnemyPrefab()
+        {
+            if (enemyPrefabs != null && enemyPrefabs.Length > 0)
+            {
+                int index = Random.Range(0, enemyPrefabs.Length);
+                return enemyPrefabs[index];
+            }
+
+            return enemyPrefab;
         }
 
         private Vector3 GetRandomSpawnPosition()

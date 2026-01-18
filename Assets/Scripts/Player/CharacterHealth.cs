@@ -25,6 +25,7 @@ namespace GameCore
         [Header("Runtime Info (Read Only)")]
         [SerializeField] private bool isInvulnerable = false;
         [SerializeField] private float invulnerabilityTimer = 0f;
+        [SerializeField] private float totalDamageTaken = 0f;
 
         // Event fired when this player takes damage
         public event Action<float> OnDamaged; // damage amount
@@ -33,6 +34,7 @@ namespace GameCore
         public float MaxHealth => maxHealth;
         public float HealthPercent => (currentHealth / maxHealth) * 100f;
         public bool IsAlive => currentHealth > 0f;
+        public float TotalDamageTaken => totalDamageTaken;
 
         private void Start()
         {
@@ -67,6 +69,7 @@ namespace GameCore
 
             currentHealth -= amount;
             currentHealth = Mathf.Max(0f, currentHealth);
+            totalDamageTaken += amount;
 
             if (logDamageEvents)
             {
@@ -120,6 +123,7 @@ namespace GameCore
             currentHealth = maxHealth;
             isInvulnerable = false;
             invulnerabilityTimer = 0f;
+            totalDamageTaken = 0f;
         }
     }
 }

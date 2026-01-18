@@ -20,11 +20,14 @@ MonoBehaviour:
   requiredFuelGels: 2
   spawnPowerCores: 2
   spawnFuelGels: 2
-  pickupMinDistance: 20
+  pickupMinDistance: 25
   pickupMaxDistance: 60
-  layout: {fileID: 11400000, guid: 8bedf2bd05ed1d135b517727dd52b426, type: 2}
+  layout: {fileID: 11400000, guid: 79d3fed3ad9f909d8abb460ba4ff8d8b, type: 2}
   questItemSpawnCount: 1
   bonusPickupCount: 2
+  bonusWeightSafe: 1
+  bonusWeightMid: 2
+  bonusWeightFar: 1
   useSpawnSeed: 0
   spawnSeed: 12345
   startingThreat: 0

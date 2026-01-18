@@ -127,11 +127,27 @@ namespace GameCore
         }
 
         /// <summary>
+        /// Get the current attack range including modifiers.
+        /// </summary>
+        public float GetEffectiveAttackRange()
+        {
+            return attackRange + rangeModifier;
+        }
+
+        /// <summary>
         /// Get the current attack damage.
         /// </summary>
         public float GetAttackDamage()
         {
             return attackDamage;
+        }
+
+        /// <summary>
+        /// Get the current attack damage including modifiers.
+        /// </summary>
+        public float GetEffectiveAttackDamage()
+        {
+            return attackDamage + damageModifier;
         }
 
         /// <summary>

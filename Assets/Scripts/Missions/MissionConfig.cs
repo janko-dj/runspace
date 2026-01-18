@@ -21,6 +21,9 @@ namespace GameCore
         public MissionLayout layout;
         public int questItemSpawnCount = 1;
         public int bonusPickupCount = 2;
+        public float bonusWeightSafe = 1f;
+        public float bonusWeightMid = 1f;
+        public float bonusWeightFar = 1f;
         public bool useSpawnSeed = false;
         public int spawnSeed = 12345;
         public int startingThreat;

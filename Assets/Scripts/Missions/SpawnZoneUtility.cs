@@ -34,6 +34,12 @@ namespace GameCore
             float midRadius = Mathf.Clamp(layout.midZoneRadius, safeRadius + 1f, mapRadius);
             float farRadius = Mathf.Clamp(layout.farZoneRadius, midRadius + 1f, mapRadius);
 
+            float margin = Mathf.Max(0f, layout.mapMargin);
+            float maxRadius = Mathf.Max(1f, mapRadius - margin);
+            safeRadius = Mathf.Min(safeRadius, maxRadius);
+            midRadius = Mathf.Min(midRadius, maxRadius);
+            farRadius = Mathf.Min(farRadius, maxRadius);
+
             float innerRadius = 0f;
             float outerRadius = safeRadius;
 
@@ -53,7 +59,7 @@ namespace GameCore
                     break;
             }
 
-            float zScale = layout.shapeType == MissionShapeType.Ellipse ? 0.75f : 1f;
+            float zScale = layout.shapeType == MissionShapeType.Ellipse ? layout.ellipseZScale : 1f;
 
             for (int i = 0; i < 40; i++)
             {
@@ -63,7 +69,7 @@ namespace GameCore
                 float z = Mathf.Sin(angle) * radius * zScale;
 
                 Vector3 candidate = new Vector3(center.x + x, center.y, center.z + z);
-                if (IsInsideMap(layout, mapCenter, candidate, zScale) && IsFarEnough(candidate, occupied, minSeparation))
+                if (IsInsideMap(layout, mapCenter, candidate, zScale, maxRadius) && IsFarEnough(candidate, occupied, minSeparation))
                 {
                     position = candidate;
                     occupied.Add(candidate);
@@ -74,9 +80,9 @@ namespace GameCore
             return false;
         }
 
-        private static bool IsInsideMap(MissionLayout layout, Vector3 mapCenter, Vector3 candidate, float zScale)
+        private static bool IsInsideMap(MissionLayout layout, Vector3 mapCenter, Vector3 candidate, float zScale, float maxRadius)
         {
-            float radius = Mathf.Max(1f, layout.mapRadius);
+            float radius = Mathf.Max(1f, maxRadius);
             Vector3 offset = candidate - mapCenter;
             float x = offset.x;
             float z = offset.z;
@@ -84,7 +90,7 @@ namespace GameCore
             if (layout.shapeType == MissionShapeType.Ellipse)
             {
                 float rx = radius;
-                float rz = radius * zScale;
+                float rz = radius * Mathf.Max(0.1f, zScale);
                 float value = (x * x) / (rx * rx) + (z * z) / (rz * rz);
                 return value <= 1f;
             }

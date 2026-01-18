@@ -29,6 +29,9 @@ namespace GameCore
         [Header("Settings")]
         [Tooltip("Maximum level player can reach in a run (0 = unlimited)")]
         [SerializeField] private int maxLevel = 0;
+        [SerializeField] private bool useGrowthFormulaBeyondThresholds = true;
+        [SerializeField] private float xpGrowthFactor = 1.15f;
+        [SerializeField] private int xpFallbackBase = 150;
 
         [Header("Debug")]
         [SerializeField] private bool showDebugOverlay = true;
@@ -106,9 +109,7 @@ namespace GameCore
                 return;
             }
 
-            int requiredXP = GetXPForNextLevel();
-
-            if (currentXP >= requiredXP)
+            while (!IsMaxLevel() && currentXP >= GetXPForNextLevel())
             {
                 LevelUp();
             }
@@ -140,8 +141,15 @@ namespace GameCore
                 return xpThresholds[thresholdIndex];
             }
 
-            // Fallback if thresholds array is too short
-            return 999999;
+            if (!useGrowthFormulaBeyondThresholds)
+            {
+                return xpFallbackBase * (thresholdIndex + 1);
+            }
+
+            int lastThreshold = xpThresholds.Length > 0 ? xpThresholds[xpThresholds.Length - 1] : xpFallbackBase;
+            int extraIndex = thresholdIndex - xpThresholds.Length + 1;
+            float scaled = lastThreshold * Mathf.Pow(xpGrowthFactor, Mathf.Max(1, extraIndex));
+            return Mathf.CeilToInt(scaled);
         }
 
         /// <summary>
@@ -184,10 +192,11 @@ namespace GameCore
             GUI.Box(new Rect(320, 550, 300, 80), "XP System");
 
             int yOffset = 575;
-            GUI.Label(new Rect(330, yOffset, 280, 20), $"Level: {currentLevel}/{maxLevel}");
+            string maxLabel = maxLevel > 0 ? maxLevel.ToString() : "∞";
+            GUI.Label(new Rect(330, yOffset, 280, 20), $"Level: {currentLevel}/{maxLabel}");
             yOffset += 20;
 
-            if (currentLevel < maxLevel)
+            if (!IsMaxLevel())
             {
                 int required = GetXPForNextLevel();
                 GUI.Label(new Rect(330, yOffset, 280, 20), $"XP: {currentXP}/{required}");

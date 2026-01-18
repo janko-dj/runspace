@@ -7,8 +7,15 @@ namespace GameCore
         [Header("Ability Slots")]
         [SerializeField] private PlayerAbilityInstance abilitySlot1;
         [SerializeField] private PlayerAbilityInstance abilitySlot2;
+        [SerializeField] private string abilitySlot1Id = "short_ability";
+        [SerializeField] private string abilitySlot2Id = "long_ability";
 
         private PlayerCharacter owner;
+
+        public PlayerAbilityInstance AbilitySlot1 => abilitySlot1;
+        public PlayerAbilityInstance AbilitySlot2 => abilitySlot2;
+        public string AbilitySlot1Id => abilitySlot1Id;
+        public string AbilitySlot2Id => abilitySlot2Id;
 
         private void Awake()
         {
@@ -16,12 +23,14 @@ namespace GameCore
 
             if (abilitySlot1 == null)
             {
-                abilitySlot1 = new PlayerAbilityInstance(new ShortCooldownAbility());
+                PlayerAbility ability = AbilityLibrary.Create(abilitySlot1Id) ?? new ShortCooldownAbility();
+                abilitySlot1 = new PlayerAbilityInstance(ability);
             }
 
             if (abilitySlot2 == null)
             {
-                abilitySlot2 = new PlayerAbilityInstance(new LongCooldownAbility());
+                PlayerAbility ability = AbilityLibrary.Create(abilitySlot2Id) ?? new LongCooldownAbility();
+                abilitySlot2 = new PlayerAbilityInstance(ability);
             }
         }
 

@@ -13,6 +13,7 @@ namespace GameCore
         [Header("Settings")]
         [Tooltip("Time limit for players to choose upgrades")]
         [SerializeField] private float choiceTimeLimit = 3f;
+        [SerializeField] private bool pauseDuringSelection = true;
 
         [Header("Debug")]
         [SerializeField] private bool showDebugOverlay = true;
@@ -23,6 +24,8 @@ namespace GameCore
         [SerializeField] private float resolutionTimer = 0f;
 
         private List<UpgradeChoiceHandler> allPlayerManagers = new List<UpgradeChoiceHandler>();
+        private float cachedTimeScale = 1f;
+        private float cachedFixedDeltaTime = 0.02f;
 
         private void OnEnable()
         {
@@ -62,13 +65,15 @@ namespace GameCore
             {
                 RunPhaseController.Instance.OnLandingEnter -= HandleLandingEnter;
             }
+
+            ResumeGame();
         }
 
         private void Update()
         {
             if (!isResolvingUpgrades) return;
 
-            resolutionTimer += Time.deltaTime;
+            resolutionTimer += Time.unscaledDeltaTime;
 
             // Check if all players have chosen OR time has expired
             if (AllPlayersHaveChosen() || resolutionTimer >= choiceTimeLimit)
@@ -97,12 +102,14 @@ namespace GameCore
             foreach (UpgradeChoiceHandler manager in allPlayerManagers)
             {
                 List<CharacterUpgrade> choices = GenerateUpgradeChoices();
+                manager.SetChoiceTimeLimit(choiceTimeLimit);
                 manager.StartUpgradeChoice(choices);
             }
 
             // Start resolution timer (NO PAUSE!)
             isResolvingUpgrades = true;
             resolutionTimer = 0f;
+            PauseGame();
 
             if (logUpgrades)
             {
@@ -179,6 +186,7 @@ namespace GameCore
             // Clear resolution state
             isResolvingUpgrades = false;
             resolutionTimer = 0f;
+            ResumeGame();
 
             if (logUpgrades)
             {
@@ -199,6 +207,7 @@ namespace GameCore
             // Clear any pending upgrades
             isResolvingUpgrades = false;
             resolutionTimer = 0f;
+            ResumeGame();
 
             if (logUpgrades)
             {
@@ -237,6 +246,35 @@ namespace GameCore
             {
                 GUI.Label(new Rect(centerX + 10, yOffset, boxWidth - 20, 20), "✓ All players ready!");
             }
+        }
+
+        private void PauseGame()
+        {
+            if (!pauseDuringSelection)
+            {
+                return;
+            }
+
+            if (Time.timeScale <= 0f)
+            {
+                return;
+            }
+
+            cachedTimeScale = Time.timeScale;
+            cachedFixedDeltaTime = Time.fixedDeltaTime;
+            Time.timeScale = 0f;
+            Time.fixedDeltaTime = 0f;
+        }
+
+        private void ResumeGame()
+        {
+            if (!pauseDuringSelection)
+            {
+                return;
+            }
+
+            Time.timeScale = cachedTimeScale <= 0f ? 1f : cachedTimeScale;
+            Time.fixedDeltaTime = cachedFixedDeltaTime <= 0f ? 0.02f : cachedFixedDeltaTime;
         }
     }
 }

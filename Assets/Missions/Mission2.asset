@@ -14,17 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameCore.MissionConfig
   missionId: mission_2
   displayName: Mission 2
-  questItemReward: {fileID: 0}
+  questItemReward: {fileID: 11400000, guid: 96dc3b482b33407eaad2c4f9d2132c06, type: 2}
   requiredQuestItem: {fileID: 11400000, guid: 1b1082422ccb8effbb531db7f75bd281, type: 2}
-  requiredPowerCores: 2
-  requiredFuelGels: 2
-  spawnPowerCores: 2
-  spawnFuelGels: 2
-  pickupMinDistance: 20
-  pickupMaxDistance: 60
-  layout: {fileID: 11400000, guid: 8bedf2bd05ed1d135b517727dd52b426, type: 2}
+  requiredPowerCores: 3
+  requiredFuelGels: 3
+  spawnPowerCores: 3
+  spawnFuelGels: 3
+  pickupMinDistance: 30
+  pickupMaxDistance: 70
+  layout: {fileID: 11400000, guid: 2b962b9c055f05fc19eee24e0f30f63c, type: 2}
   questItemSpawnCount: 1
-  bonusPickupCount: 2
+  bonusPickupCount: 3
+  bonusWeightSafe: 0.5
+  bonusWeightMid: 1.5
+  bonusWeightFar: 2
   useSpawnSeed: 0
   spawnSeed: 12345
   startingThreat: 8

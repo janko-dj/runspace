@@ -64,6 +64,11 @@ namespace GameCore
                 return;
             }
 
+            if (PlayerSettingsService.Instance != null && !PlayerSettingsService.Instance.CameraOrbitEnabled)
+            {
+                return;
+            }
+
             if (requireRightMouse && !Input.GetMouseButton(1))
             {
                 return;
@@ -75,7 +80,9 @@ namespace GameCore
                 return;
             }
 
-            currentYaw += mouseX * yawSpeed * Time.deltaTime;
+            float sensitivity = PlayerSettingsService.Instance != null ? PlayerSettingsService.Instance.MouseSensitivity : 1f;
+            float invert = PlayerSettingsService.Instance != null && PlayerSettingsService.Instance.InvertYaw ? -1f : 1f;
+            currentYaw += mouseX * yawSpeed * sensitivity * invert * Time.deltaTime;
 
             Vector3 flat = new Vector3(baseOffset.x, 0f, baseOffset.z);
             float distance = flat.magnitude;

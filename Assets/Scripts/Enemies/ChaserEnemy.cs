@@ -8,7 +8,7 @@ namespace GameCore
     /// - Low HP, fast, group pressure
     /// - Forces movement, punishes standing still
     /// </summary>
-    public class ChaserEnemy : MonoBehaviour
+    public class ChaserEnemy : MonoBehaviour, IDamageable
     {
         [Header("Stats")]
         [Tooltip("Maximum health of this enemy")]

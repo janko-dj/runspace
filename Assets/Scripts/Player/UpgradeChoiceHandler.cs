@@ -31,6 +31,7 @@ namespace GameCore
         public bool HasChosenUpgrade => hasChosenUpgrade;
         public float ChoiceTimer => choiceTimer;
         public List<CharacterUpgrade> PendingChoices => pendingUpgradeChoices;
+        public void SetChoiceTimeLimit(float limitSeconds) => choiceTimeLimit = Mathf.Max(0.1f, limitSeconds);
 
         private void Awake()
         {
@@ -46,7 +47,7 @@ namespace GameCore
             if (!isChoosingUpgrade || hasChosenUpgrade) return;
 
             // Count down choice timer
-            choiceTimer += Time.deltaTime;
+            choiceTimer += Time.unscaledDeltaTime;
 
             // Handle keyboard input for selection
             if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
@@ -183,12 +184,12 @@ namespace GameCore
             if (!showDebugOverlay || !isChoosingUpgrade) return;
 
             // Show upgrade choices for this player
-            int boxWidth = 350;
-            int boxHeight = 140;
-            int xPos = 10;
-            int yPos = Screen.height - boxHeight - 10;
+            int boxWidth = 420;
+            int boxHeight = 170;
+            int xPos = Screen.width / 2 - boxWidth / 2;
+            int yPos = Screen.height / 2 - boxHeight / 2;
 
-            GUI.Box(new Rect(xPos, yPos, boxWidth, boxHeight), $"{gameObject.name} - Choose Upgrade!");
+            GUI.Box(new Rect(xPos, yPos, boxWidth, boxHeight), "Level Up - Choose Upgrade");
 
             int yOffset = yPos + 25;
             float timeRemaining = choiceTimeLimit - choiceTimer;
